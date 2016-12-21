@@ -1,0 +1,248 @@
+/*
+ *ARDUINO CODE
+ */
+ 
+#include <AD9954.h>
+#include <SPI.h>
+#include <Wire.h>
+
+int RST = 2;  // RESETPIN
+int UPD = 3;  // UPDATEPIN
+int PS0 = 4;  // PS0
+int PS1 = 5;  // PS1
+int OSK = 6;  // OSK
+int CS = 10;  
+int SDO = 12;
+int SDIO = 11;
+int SCK0 = 13; 
+int SSPIN = CS;
+int led = 8;
+
+long refClk, STfreq, NDfreq0, NDfreq1, NDposDF, LSfreq0, LSfreq1, LSposDF, LSnegDF, clk, sync_clk, sync_period= 10, delayND, delayP, delayN, nd, ls0, ls1;
+int clkMlt, NDposRR, LSposRR, LSnegRR, LSdelayP=100, LSdelayN=100, NDdelay=100;
+
+int inf = 0;
+String x,y;
+String stm;
+String mode; //mode selection, singletonemode
+String msg = "test";
+String intl[2]; //initialize
+String ndm[4];  //nodwellmode
+String lsm[6];  //linearsweepmode
+
+AD9954 DDS(SSPIN, RST, UPD, PS0, PS1, OSK);
+void setup(){
+  pinMode(led, OUTPUT);
+  digitalWrite(led, HIGH);
+  Serial.begin(9600);
+  SPI.begin();
+  SPI.beginTransaction(SPISettings(20000000, MSBFIRST, SPI_MODE0));
+  DDS.update();
+  delay(500);                       // let things get set up...
+  DDS.initialize(400000000);
+  DDS.initialize(20000000,20);      //refClk & ClkMult set to 20MHz and 20 as default value.
+  delay(2);
+  DDS.setFreq(1000000);             //1MHz
+  digitalWrite(led, LOW);
+}
+
+void loop(){
+    digitalWrite(led, LOW);
+    while(Serial.available() == 0){}
+    char mode = Serial.read();
+    if(mode=='i'){
+      Serial.println("a");
+        intl[0] = Serial.parseInt();
+        mode = Serial.read();
+        intl[1] = Serial.parseInt();
+        glimpse();
+        Serial.println(intl[0]);
+        Serial.println(intl[1]);
+    initDDS(intl);
+      
+    }else if(mode=='r'){
+        x = Serial.parseInt();
+            glimpse();
+        DDS.reset();
+            glimpse();
+        DDS.initialize(refClk, clkMlt);
+        delay(2);
+        DDS.setFreq(5000000);
+        
+        Serial.println("Reset");    
+        
+    }else if(mode=='s'){
+      stm = Serial.parseInt();
+      STM(stm);
+      glimpse();
+      Serial.println("stm");
+    }else if(mode=='n'){
+        ndm[0] = Serial.parseInt();
+        char n1 = Serial.read();
+        ndm[1] = Serial.parseInt();
+
+        char n2 = Serial.read();
+        ndm[2] = Serial.parseInt();
+
+        char n3 = Serial.read();
+        ndm[3] = Serial.parseInt();
+        NDM(ndm);
+        glimpse();
+        Serial.println("ndm");    
+        
+    }else if(mode=='l'){
+        lsm[0] = Serial.parseInt();
+         
+        char l1 = Serial.read();
+        lsm[1] = Serial.parseInt();
+
+        char l2 = Serial.read();
+        lsm[2] = Serial.parseInt();
+
+        char l3 = Serial.read();
+        lsm[3] = Serial.parseInt();
+
+        char l4 = Serial.read();
+        lsm[4] = Serial.parseInt();
+
+        char l5 = Serial.read();
+        lsm[5] = Serial.parseInt();
+        
+        LSM(lsm);
+            glimpse();
+    }else{
+      for(int i = 0; i < 20; i++){
+        digitalWrite(led, HIGH);
+        delay(50);
+        digitalWrite(led, LOW);    
+        delay(50);
+      }
+    }
+}
+
+void glimpse(){
+  digitalWrite(led, HIGH);
+  delay(500);
+  digitalWrite(led, LOW);
+  return;
+}
+
+//convert strings to ints and longs
+void initDDS(String intl[]){ 
+  refClk = intl[0].toFloat();
+  Serial.println(refClk);
+  refClk = intl[0].toInt();
+  Serial.println(refClk);
+  
+  Serial.println(intl[0]);
+  clkMlt = intl[1].toInt();
+  Serial.println(clkMlt);
+  Serial.println(intl[1]);
+  clk = clkMlt*refClk;
+  sync_clk = (float)clk/4;
+  sync_period = (1/(float)sync_clk)*1000000000; //in nanosecs
+  
+  DDS.initialize(refClk, clkMlt);
+  delay(1);
+  return;
+}
+
+void STM(String stm){
+  STfreq = stm.toFloat();
+  DDS.setFreq(STfreq);
+  delayMicroseconds(1);
+  return;
+}
+
+void NDM(String ndm[]){
+  NDfreq0 = ndm[0].toFloat();
+  NDfreq1 = ndm[1].toFloat();
+  NDposDF = ndm[2].toFloat();
+  NDposRR = ndm[3].toInt();
+    if(NDposRR>255){
+      NDposRR = 255;
+    }
+  DDS.linearSweepnoDwell(NDfreq0, NDfreq1, NDposDF, NDposRR);
+  nd = (NDfreq1 - NDfreq0)*sync_period*NDposRR;
+  delayND = ((float)nd)/NDposDF; // in secs
+  delayND = (float) delayND / 1000000;
+  delay(delayND);
+  //Serial.println(delayND);  
+  while(inf == 0){
+    Serial.println("test0");
+    while(Serial.available() == 0){
+      DDS.reset();
+      DDS.initialize(refClk, clkMlt);
+      DDS.linearSweepnoDwell(NDfreq0, NDfreq1, NDposDF, NDposRR);
+      delay(delayND); 
+    }
+    Serial.println("test1");
+    msg = Serial.read();
+    y = Serial.parseInt();
+    if(msg=='r'){
+      msg=='k';
+      Serial.println("test2");
+      break;
+      Serial.println("test3");
+    }
+    Serial.println("test4");
+    break;
+  }
+  Serial.println("test5");
+  DDS.reset();
+  glimpse();
+  DDS.initialize(refClk,clkMlt);
+  DDS.setFreq(6000000);
+  Serial.println("test6");
+  return;
+  Serial.println("test7");
+}
+
+void LSM(String lsm[]){
+  LSfreq0 = lsm[0].toFloat();
+  LSfreq1 = lsm[1].toFloat();
+  LSposDF = lsm[2].toFloat();
+  LSposRR = lsm[3].toInt();
+    if(LSposRR>255){
+      LSposRR = 255;
+    }
+  LSnegDF = lsm[4].toFloat();
+  LSnegRR = lsm[5].toInt();
+    if(LSnegRR>255){
+      LSnegRR = 255;
+    }
+  DDS.linearSweep(LSfreq0, LSfreq1, LSposDF, LSposRR, LSnegDF, LSnegRR);
+  
+  ls0 = (LSfreq1 - LSfreq0)*sync_period*LSposRR;
+  delayP = ((float)ls0)/LSposDF;
+  delayP = (float)delayP/1000000;
+  //Serial.println(delayP);  
+
+  //max value for microseconds delay16383
+  ls1 = (LSfreq1 - LSfreq0)*sync_period*LSnegRR;
+  delayN = ((float)ls1)/LSnegDF;
+  delayN = (float)delayN/1000000;
+  //Serial.println(delayN);  
+  
+  while(inf == 0 ){
+    while(Serial.available() == 0){
+      delay(delayP);
+      digitalWrite(PS0,LOW);
+      delay(delayN);
+      digitalWrite(PS0,HIGH);
+      Serial.println("test4");
+    }
+    msg = Serial.read();
+    y = Serial.parseInt();
+    if(msg=='r'){
+      msg=='k';
+      break;
+    }
+    break;
+  }
+  DDS.reset();
+  delay(2);
+  DDS.initialize(refClk,clkMlt);
+  DDS.setFreq(7000000);
+  return;
+}
