@@ -1,0 +1,77 @@
+#ifndef DIALOG_H
+#define DIALOG_H
+
+#include <QDialog>
+#include <QMainWindow>
+#include <QSerialPort>
+
+namespace Ui {
+class Dialog;
+}
+
+class Dialog : public QDialog
+{
+    Q_OBJECT
+
+public:
+    explicit Dialog(QWidget *parent = 0);
+    ~Dialog();
+
+
+private slots:
+
+    void on_RefClk_valueChanged(QString arg1);
+
+    void on_ClkMlt_valueChanged(QString arg1);
+
+    void on_modeOptions_currentIndexChanged(int index);
+
+    void on_terminate_clicked();
+
+    void on_STFreq_valueChanged(QString arg1);
+
+    void on_STMButton_clicked();
+
+    void on_NDfreq0_valueChanged(QString arg1);
+
+    void on_NDfreq1_valueChanged(QString arg1);
+
+    void on_NDposDF_valueChanged(QString arg1);
+
+    void on_NDposRR_valueChanged(QString arg1);
+
+    void on_NDMButton_clicked();
+
+    void on_LSfreq0_valueChanged(QString arg1);
+
+    void on_LSFreq1_valueChanged(QString arg1);
+
+    void on_LSposDF_valueChanged(QString arg1);
+
+    void on_LSposRR_valueChanged(QString arg1);
+
+    void on_LSnegDF_valueChanged(QString arg1);
+
+    void on_LSnegRR_valueChanged(QString arg1);
+
+    void on_LSMButton_clicked();
+
+    void STM();
+
+    void NDM();
+
+    void LSM();
+
+    void initDDS();
+
+    void writePort(QString);
+
+private:
+    Ui::Dialog *ui;
+    QSerialPort *arduino;
+    int _index;
+    QString _NDfreq0, _NDfreq1, _NDposDF, _LSfreq0, _LSfreq1, _LSposDF, _LSnegDF;
+    QString _NDposRR, _LSposRR, _LSnegRR, _STfreq, _refClk, _clkMlt;
+};
+
+#endif // DIALOG_H
